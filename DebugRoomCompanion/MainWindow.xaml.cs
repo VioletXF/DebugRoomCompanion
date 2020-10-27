@@ -166,7 +166,7 @@ namespace DebugRoomCompanion
             messageText.Text = "";
 
             // 메신저봇에 데이터를 보냅니다.
-            sw.WriteLine(json.ToString(Newtonsoft.Json.Formatting.None)); // 메신저봇은 요청을 줄 단위롤 받아드리기 때문에 Formatting을 해서는 안됩니다.
+            sw.WriteLine(json.ToString(Newtonsoft.Json.Formatting.None)); // 메신저봇은 요청을 줄 단위로 받아드리기 때문에 Formatting을 해서는 안됩니다.
             sw.Flush();
         }
 
