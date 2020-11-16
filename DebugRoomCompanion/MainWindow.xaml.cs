@@ -24,6 +24,12 @@ namespace DebugRoomCompanion
             debugRoom = new DebugRoom(adb);
             debugRoom.Message += DebugRoom_Message;
             debugRoom.Error += DebugRoom_Error;
+            debugRoom.ReadEnd += DebugRoom_ReadEnd;
+        }
+
+        private void DebugRoom_ReadEnd(object sender, EventArgs e)
+        {
+            OnDisconnect();
         }
 
         private void DebugRoom_Error(object sender, EventArgs e)
@@ -40,16 +46,22 @@ namespace DebugRoomCompanion
             DebugRoom.MessageData msg = args.messageData;
             AppendChat(msg.GetBotName(), msg.GetRoomName(), msg.GetAuthorName(), msg.GetMessage(), msg.GetIsBot());
         }
-
+        private void OnDisconnect()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                connectButton.Content = "Connect";
+                sendButton.IsEnabled = false;
+                isConnected = false;
+            });
+        }
         private void OnClickConnectButton(object sender, RoutedEventArgs e)
         {
             
             if (isConnected)
             {
                 debugRoom.Disconnect();
-                connectButton.Content = "Connect";
-                sendButton.IsEnabled = false;
-                isConnected = false;
+                OnDisconnect();
             }
             else
             {
