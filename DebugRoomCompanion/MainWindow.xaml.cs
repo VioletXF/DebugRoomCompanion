@@ -3,105 +3,54 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Net.Sockets;
-using System.Net;
-using System.IO;
-using System.Threading;
 using Newtonsoft.Json.Linq;
+using Mdb;
 namespace DebugRoomCompanion
 {
+    
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
     {
-        Socket transferSock; // 메신저봇과의 연결에 사용될 소켓입니다.
-        StreamReader sr; // 메신저봇이 전송한 데이터를 읽는데 사용합니다.
-        StreamWriter sw; // 메신저봇에 데이터를 전송하는데 사용합니다.
+        DebugRoom debugRoom;
+        ADB adb;
         bool isConnected = false;
-
+        
 
         public MainWindow()
         {
             InitializeComponent();
+            adb = new ADB("adb.exe");
+            debugRoom = new DebugRoom(adb);
+            debugRoom.Message += DebugRoom_Message;
+            debugRoom.Error += DebugRoom_Error;
         }
 
-
-        private void Read() // 메신저봇에서 송신하는 데이터를 읽어들입니다.
+        private void DebugRoom_Error(object sender, EventArgs e)
         {
-            while (true)
-            {
-                string line = sr.ReadLine();
-                if (line != null) // ReadLine의 결과가 null일 경우, 연결이 끊겼음을 의미합니다.
-                {
-                    ReceiveMessage(line);
-                    Console.WriteLine(line);
-                }
-                else
-                {
-                    OnDisconnect();
-                    break;
-                }
-            }
+            
+            DebugRoom.ErrorEventArgs args = e as DebugRoom.ErrorEventArgs;
+            MessageBox.Show(args.error, "오류");
+            Console.WriteLine(args.error);
         }
 
-        private void OnDisconnect() // 연결 해제시 반드시 호출해야 합니다.
+        private void DebugRoom_Message(object sender, EventArgs e)
         {
-            Dispatcher.Invoke(() =>
-            {
-                connectButton.IsEnabled = true;
-                connectButton.Content = "Connect";
-                sendButton.IsEnabled = false;
-            });
-            isConnected = false;
+            DebugRoom.MessageEventArgs args = e as DebugRoom.MessageEventArgs;
+            DebugRoom.MessageData msg = args.messageData;
+            AppendChat(msg.GetBotName(), msg.GetRoomName(), msg.GetAuthorName(), msg.GetMessage(), msg.GetIsBot());
         }
-
-
-        private void OnDisconnect(IAsyncResult ar) // transferSock.BeginDisconnect 완료 시 호출됩니다.
-        {
-            Socket s = (Socket)ar.AsyncState;
-            s.EndDisconnect(ar);
-            OnDisconnect();
-        }
-
-
-        private void OnConnect(IAsyncResult ar) // transferSock.BeginConnect 완료 시 호출됩니다.
-        {
-            Dispatcher.Invoke(() =>
-            {
-                connectButton.IsEnabled = true;
-                connectButton.Content = "Disconnect";
-                sendButton.IsEnabled = true;
-            });
-            Console.WriteLine("Connected");
-            Socket s = (Socket)ar.AsyncState;
-            try
-            {
-                s.EndConnect(ar);
-                isConnected = true;
-                NetworkStream ns = new NetworkStream(transferSock);
-                sr = new StreamReader(ns);
-                sw = new StreamWriter(ns);
-                Thread readThread = new Thread(Read);
-                readThread.IsBackground = true;
-                readThread.Start();
-            }
-            catch (Exception e)
-            {
-                OnDisconnect();
-                MessageBox.Show(e.ToString(), "연결 오류");
-            }
-        }
-
 
         private void OnClickConnectButton(object sender, RoutedEventArgs e)
         {
+            
             if (isConnected)
             {
-                // 연결된 상태에서 같은 버튼을 다시 클릭 시 연결해제 합니다.
-                connectButton.Content = "Disconnecting...";
-                connectButton.IsEnabled = false;
-                transferSock.BeginDisconnect(true, new AsyncCallback(OnDisconnect), transferSock);
+                debugRoom.Disconnect();
+                connectButton.Content = "Connect";
+                sendButton.IsEnabled = false;
+                isConnected = false;
             }
             else
             {
@@ -112,13 +61,10 @@ namespace DebugRoomCompanion
                     portNum = 9500;
                     portNumberText.Text = "9500";
                 }
-                Console.WriteLine("Connecting");
-                connectButton.Content = "Connecting";
-                connectButton.IsEnabled = false;
-
-                // 설정한 포트를 통해 연결을 시도합니다. (비동기)
-                transferSock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
-                transferSock.BeginConnect(new IPEndPoint(IPAddress.Loopback, portNum), new AsyncCallback(OnConnect), transferSock);
+                debugRoom.Connect(portNum, portNum);
+                connectButton.Content = "Disconnect";
+                sendButton.IsEnabled = true;
+                isConnected = true;
             }
         }
 
@@ -153,21 +99,18 @@ namespace DebugRoomCompanion
                 return;
             }
             //AppendChat(botNameText.Text, roomNameText.Text, authorNameText.Text, messageText.Text, false);
-            JObject json = new JObject();
-            json.Add("name", "debugRoom");
-            JObject data = new JObject();
-            data.Add("isGroupChat", isGroupChatCheck.IsChecked);
-            data.Add("botName", botNameText.Text);
-            data.Add("packageName", packageNameText.Text);
-            data.Add("roomName", roomNameText.Text);
-            data.Add("authorName", authorNameText.Text);
-            data.Add("message", messageText.Text);
-            json.Add("data", data);
-            messageText.Text = "";
 
+            
+            DebugRoom.MessageData msg = new DebugRoom.MessageData();
+            msg.SetIsGroupChat((bool)isGroupChatCheck.IsChecked)
+                .SetBotName(botNameText.Text)
+                .SetPackageName(packageNameText.Text)
+                .SetRoomName(roomNameText.Text)
+                .SetAuthorName(authorNameText.Text)
+                .SetMessage(messageText.Text);
+            messageText.Text = "";
             // 메신저봇에 데이터를 보냅니다.
-            sw.WriteLine(json.ToString(Newtonsoft.Json.Formatting.None)); // 메신저봇은 요청을 줄 단위로 받아드리기 때문에 Formatting을 해서는 안됩니다.
-            sw.Flush();
+            debugRoom.Send(msg);
         }
 
 
