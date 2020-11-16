@@ -35,8 +35,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Mdb">
-      <HintPath>..\..\..\..\Documents\GitHub\MessengerBotDebugBridge\cs\MessengerBotDebugBridge\MessengerBotDebugBridge\bin\Release\Mdb.dll</HintPath>
+    <Reference Include="Mdb, Version=1.0.0.3, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Documents\GitHub\MessengerBotDebugBridge\cs\bin\Release\Mdb.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
