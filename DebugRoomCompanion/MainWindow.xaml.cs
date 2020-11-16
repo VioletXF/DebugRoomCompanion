@@ -3,7 +3,6 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using Newtonsoft.Json.Linq;
 using Mdb;
 namespace DebugRoomCompanion
 {
@@ -111,23 +110,6 @@ namespace DebugRoomCompanion
             messageText.Text = "";
             // 메신저봇에 데이터를 보냅니다.
             debugRoom.Send(msg);
-        }
-
-
-        private void ReceiveMessage(string line) // 메신저봇으로부터 전송받은 데이터를 처리합니다.
-        {
-            JObject json = JObject.Parse(line);
-            string name = json.Value<string>("name");
-            if (name == "debugRoom")
-            {
-                JObject data = json.Value<JObject>("data");
-                string botName = data.Value<string>("botName");
-                string roomName = data.Value<string>("roomName");
-                string authorName = data.Value<string>("authorName");
-                string message = data.Value<string>("message");
-                bool isBot = data.Value<bool>("isBot");
-                AppendChat(botName, roomName, authorName, message, isBot);
-            }
         }
 
 
